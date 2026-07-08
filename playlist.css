@@ -1100,6 +1100,12 @@ select:focus {
 
 @media (max-width: 640px) {
   .site-header {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "brand"
+      "action"
+      "nav";
+    gap: 8px;
     padding: 10px 12px 12px;
   }
 
@@ -1153,6 +1159,8 @@ select:focus {
   }
 
   .brand {
+    width: 100%;
+    justify-content: center;
     min-width: 0;
   }
 
@@ -1170,14 +1178,23 @@ select:focus {
   }
 
   .site-nav {
+    width: 100%;
+    grid-template-columns: repeat(5, max-content);
+    justify-content: start;
     gap: 3px;
     padding: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .site-nav::-webkit-scrollbar {
+    display: none;
   }
 
   .site-nav a {
     min-height: 36px;
-    padding: 0 6px;
-    font-size: 12px;
+    padding: 0 12px;
+    font-size: 12.5px;
   }
 
   .clear-button {
@@ -1194,6 +1211,9 @@ select:focus {
   .account-actions {
     min-width: 0;
     max-width: 100%;
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     gap: 5px;
   }
 
@@ -1205,7 +1225,30 @@ select:focus {
   }
 
   .user-chip {
-    max-width: 104px;
+    max-width: none;
+    justify-content: flex-start;
+  }
+
+  .feature-cover,
+  .track-cover {
+    min-height: 190px;
+  }
+
+  .feature-copy {
+    padding: 18px;
+  }
+
+  .feature-copy h2 {
+    font-size: 28px;
+  }
+
+  .metric-card {
+    min-height: 96px;
+    padding: 16px;
+  }
+
+  .metric-card strong {
+    font-size: 36px;
   }
 }
 
