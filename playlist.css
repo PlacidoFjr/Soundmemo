@@ -290,6 +290,7 @@ body.auth-locked .site-main {
   position: absolute;
   top: 50%;
   right: 8px;
+  transform: translateY(-50%);
   width: 34px;
   height: 34px;
   display: inline-flex;
@@ -306,11 +307,14 @@ body.auth-locked .site-main {
   color: var(--green);
 }
 
+.password-toggle:focus-visible {
+  box-shadow: 0 0 0 3px var(--green-soft);
+}
+
 .password-toggle svg {
   width: 20px;
   height: 20px;
   fill: currentColor;
-  transform: translateY(1px);
 }
 
 .section {
@@ -608,6 +612,15 @@ select {
 input::placeholder,
 textarea::placeholder {
   color: #707070;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--ink);
+  box-shadow: 0 0 0 1000px #0a0a0a inset;
+  caret-color: var(--ink);
+  transition: background-color 9999s ease-in-out 0s;
 }
 
 input:focus,
