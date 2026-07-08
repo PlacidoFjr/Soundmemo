@@ -61,14 +61,21 @@
           <label for="auth-email">E-mail</label>
           <input id="auth-email" name="email" type="email" autocomplete="email" placeholder="seu@email.com" required />
           <label for="auth-password">Senha</label>
-          <input
-            id="auth-password"
-            name="password"
-            type="password"
-            autocomplete="current-password"
-            placeholder="Sua senha"
-            required
-          />
+          <div class="password-row">
+            <input
+              id="auth-password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              placeholder="Sua senha"
+              required
+            />
+            <button class="password-toggle" type="button" id="password-toggle" aria-label="Mostrar senha">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 5c5 0 8.6 4.3 9.8 6.2a1.5 1.5 0 0 1 0 1.6C20.6 14.7 17 19 12 19s-8.6-4.3-9.8-6.2a1.5 1.5 0 0 1 0-1.6C3.4 9.3 7 5 12 5zm0 2c-3.9 0-6.9 3.4-8 5 1.1 1.6 4.1 5 8 5s6.9-3.4 8-5c-1.1-1.6-4.1-5-8-5zm0 2.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5z" />
+              </svg>
+            </button>
+          </div>
           <button class="save-button" type="submit">Entrar</button>
         </form>
       </div>

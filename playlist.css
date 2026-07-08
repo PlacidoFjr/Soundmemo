@@ -278,6 +278,41 @@ body.auth-locked .site-main {
   margin-top: 6px;
 }
 
+.password-row {
+  position: relative;
+}
+
+.password-row input {
+  padding-right: 48px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted-strong);
+}
+
+.password-toggle:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--green);
+}
+
+.password-toggle svg {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+  transform: translateY(1px);
+}
+
 .section {
   scroll-margin-top: 92px;
   margin-bottom: 22px;

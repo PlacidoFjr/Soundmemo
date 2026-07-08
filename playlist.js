@@ -75,6 +75,7 @@ const navLinks = document.querySelectorAll(".site-nav a");
 const authForm = document.querySelector("#auth-form");
 const authEmailInput = document.querySelector("#auth-email");
 const authPasswordInput = document.querySelector("#auth-password");
+const passwordToggle = document.querySelector("#password-toggle");
 const loginButton = document.querySelector("#login-button");
 const logoutButton = document.querySelector("#logout-button");
 const userChip = document.querySelector("#user-chip");
@@ -124,6 +125,7 @@ loginButton.addEventListener("click", () => {
   authEmailInput.focus();
 });
 authForm.addEventListener("submit", loginWithEmail);
+passwordToggle.addEventListener("click", togglePasswordVisibility);
 logoutButton.addEventListener("click", async () => {
   await signOut(auth);
 });
@@ -248,6 +250,12 @@ async function loginWithEmail(event) {
   }
 }
 
+function togglePasswordVisibility() {
+  const shouldShow = authPasswordInput.type === "password";
+  authPasswordInput.type = shouldShow ? "text" : "password";
+  passwordToggle.setAttribute("aria-label", shouldShow ? "Ocultar senha" : "Mostrar senha");
+}
+
 function getEmailAuthErrorMessage(error) {
   if (error?.code === "auth/operation-not-allowed") {
     return "Ative o login por e-mail e senha no Firebase Authentication.";
@@ -258,7 +266,7 @@ function getEmailAuthErrorMessage(error) {
     error?.code === "auth/user-not-found" ||
     error?.code === "auth/wrong-password"
   ) {
-    return "E-mail ou senha incorretos.";
+    return "E-mail ou senha incorretos. Confira se o usuário foi criado com E-mail/senha no Firebase.";
   }
 
   if (error?.code === "auth/too-many-requests") {
@@ -269,7 +277,7 @@ function getEmailAuthErrorMessage(error) {
     return "A API key do Firebase na Vercel não é válida para este projeto.";
   }
 
-  return error?.message || "Não consegui entrar com esse e-mail.";
+  return error?.code ? `Firebase: ${error.code}.` : "Não consegui entrar com esse e-mail.";
 }
 
 function subscribeToTracks() {
