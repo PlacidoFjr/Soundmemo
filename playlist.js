@@ -693,7 +693,9 @@ function setUnlockedState(user) {
 
   const label = getUserLabel(user);
   contributorInput.value = label;
-  userChip.textContent = label;
+  userChip.textContent = getShortUserLabel(user);
+  userChip.title = label;
+  userChip.setAttribute("aria-label", `Conta conectada: ${label}`);
   userChip.hidden = false;
   loginButton.hidden = true;
   logoutButton.hidden = false;
@@ -723,6 +725,12 @@ function isAllowedUser(user) {
 
 function getUserLabel(user) {
   return user?.displayName || user?.email || "Usuário";
+}
+
+function getShortUserLabel(user) {
+  const label = getUserLabel(user);
+  if (label.includes("@")) return label.split("@")[0];
+  return label.split(/\s+/).filter(Boolean)[0] || label;
 }
 
 function buildPlaylistText() {

@@ -171,7 +171,7 @@ svg {
   justify-content: flex-end;
   gap: 8px;
   align-items: center;
-  min-width: 194px;
+  min-width: 0;
 }
 
 .auth-button,
@@ -202,8 +202,9 @@ svg {
 }
 
 .user-chip {
-  max-width: 180px;
-  padding: 0 12px;
+  max-width: clamp(118px, 16vw, 190px);
+  min-width: 0;
+  padding: 0 14px;
   overflow: hidden;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.045);
@@ -1065,6 +1066,7 @@ select:focus {
 
   .account-actions {
     grid-area: action;
+    max-width: min(100%, 440px);
   }
 
   .site-nav {
@@ -1180,21 +1182,30 @@ select:focus {
 
   .clear-button {
     min-height: 38px;
-    padding: 0 12px;
-    font-size: 14px;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
+  .clear-button svg {
+    width: 17px;
+    height: 17px;
   }
 
   .account-actions {
     min-width: 0;
-    gap: 6px;
+    max-width: 100%;
+    gap: 5px;
   }
 
   .auth-button,
   .user-chip {
     min-height: 38px;
-    max-width: 128px;
     padding: 0 10px;
     font-size: 13px;
+  }
+
+  .user-chip {
+    max-width: 104px;
   }
 }
 
