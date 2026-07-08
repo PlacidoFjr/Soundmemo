@@ -10,6 +10,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDocFromServer,
   getDocs,
   getFirestore,
   onSnapshot,
@@ -161,7 +162,7 @@ form.addEventListener("submit", async (event) => {
   try {
     setStatus("Salvando no Firestore...");
     const importedTrack = await buildTrackFromUrl(urlInput.value.trim());
-    await createTrack({
+    const savedTrackId = await createTrack({
       ...importedTrack,
       title: titleInput.value.trim(),
       artist: artistInput.value.trim(),
@@ -174,9 +175,9 @@ form.addEventListener("submit", async (event) => {
     contributorInput.value = getUserLabel(currentUser);
     previewBox.hidden = true;
     previewBox.innerHTML = "";
-    setStatus("Música adicionada à biblioteca.");
+    setStatus(`Música salva no Firestore. ID: ${savedTrackId}`);
   } catch (error) {
-    setStatus(error.message);
+    setStatus(getFirestoreErrorMessage(error));
   }
 });
 
@@ -280,6 +281,18 @@ function getEmailAuthErrorMessage(error) {
   return error?.code ? `Firebase: ${error.code}.` : "Não consegui entrar com esse e-mail.";
 }
 
+function getFirestoreErrorMessage(error) {
+  if (error?.code === "permission-denied") {
+    return "Firestore recusou o salvamento. Confira se as regras foram publicadas e se este e-mail esta liberado.";
+  }
+
+  if (error?.code === "unavailable") {
+    return "Firestore indisponivel agora. Tente novamente em alguns segundos.";
+  }
+
+  return error?.code ? `Firestore: ${error.code} - ${error.message}` : error.message;
+}
+
 function subscribeToTracks() {
   unsubscribeFromTracks();
 
@@ -306,7 +319,7 @@ function unsubscribeFromTracks() {
 async function createTrack(track) {
   const userName = getUserLabel(currentUser);
 
-  await addDoc(tracksCollection, {
+  const savedDoc = await addDoc(tracksCollection, {
     platform: track.platform,
     platformLabel: track.platformLabel,
     url: track.url,
@@ -322,7 +335,15 @@ async function createTrack(track) {
     userName,
     userEmail: currentUser.email,
     createdAt: serverTimestamp(),
+    createdAtClient: new Date().toISOString(),
   });
+
+  const confirmedDoc = await getDocFromServer(savedDoc);
+  if (!confirmedDoc.exists()) {
+    throw new Error("A musica foi enviada, mas nao apareceu no Firestore.");
+  }
+
+  return savedDoc.id;
 }
 
 async function deleteTrack(id) {
@@ -682,7 +703,7 @@ function normalizeFirebaseTrack(item) {
     contributor: data.contributor || data.userName || data.userEmail || "Anônimo",
     userEmail: data.userEmail || "",
     userName: data.userName || "",
-    createdAt: data.createdAt || null,
+    createdAt: data.createdAt || data.createdAtClient || null,
   };
 }
 
