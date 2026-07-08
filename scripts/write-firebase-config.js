@@ -15,10 +15,11 @@ const missing = Object.entries(config)
   .map(([key]) => key);
 
 if (missing.length) {
-  throw new Error(`Firebase config incompleta. Variaveis ausentes: ${missing.join(", ")}`);
+  console.warn(`Firebase config incompleta. Variaveis ausentes: ${missing.join(", ")}`);
 }
 
-const content = `window.SOUNDMEMO_FIREBASE_CONFIG = ${JSON.stringify(config, null, 2)};\n`;
+const safeConfig = missing.length ? {} : config;
+const content = `window.SOUNDMEMO_FIREBASE_CONFIG = ${JSON.stringify(safeConfig, null, 2)};\n`;
 const target = path.join(__dirname, "..", "firebase-config.js");
 
 fs.writeFile(target, content, "utf8");
