@@ -12,10 +12,9 @@ import {
   doc,
   getDocFromServer,
   getDocs,
+  getDocsFromServer,
   getFirestore,
   onSnapshot,
-  orderBy,
-  query,
   serverTimestamp,
   writeBatch,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
@@ -112,6 +111,9 @@ onAuthStateChanged(auth, (user) => {
 
   currentUser = user;
   setUnlockedState(user);
+  refreshTracksFromServer().catch((error) => {
+    setStatus(getFirestoreErrorMessage(error));
+  });
   subscribeToTracks();
 });
 
@@ -175,6 +177,7 @@ form.addEventListener("submit", async (event) => {
     contributorInput.value = getUserLabel(currentUser);
     previewBox.hidden = true;
     previewBox.innerHTML = "";
+    await refreshTracksFromServer();
     setStatus(`Música salva no Firestore. ID: ${savedTrackId}`);
   } catch (error) {
     setStatus(getFirestoreErrorMessage(error));
@@ -296,15 +299,14 @@ function getFirestoreErrorMessage(error) {
 function subscribeToTracks() {
   unsubscribeFromTracks();
 
-  const tracksQuery = query(tracksCollection, orderBy("createdAt", "desc"));
   unsubscribeTracks = onSnapshot(
-    tracksQuery,
+    tracksCollection,
     (snapshot) => {
-      tracks = snapshot.docs.map((item) => normalizeFirebaseTrack(item));
+      tracks = sortTracks(snapshot.docs.map((item) => normalizeFirebaseTrack(item)));
       renderTracks();
     },
     (error) => {
-      setStatus(error.message || "Não consegui carregar o Firestore.");
+      setStatus(getFirestoreErrorMessage(error));
     }
   );
 }
@@ -344,6 +346,14 @@ async function createTrack(track) {
   }
 
   return savedDoc.id;
+}
+
+async function refreshTracksFromServer() {
+  const snapshot = await getDocsFromServer(tracksCollection);
+  const serverTracks = sortTracks(snapshot.docs.map((item) => normalizeFirebaseTrack(item)));
+  tracks = serverTracks;
+  renderTracks();
+  return serverTracks;
 }
 
 async function deleteTrack(id) {
@@ -705,6 +715,14 @@ function normalizeFirebaseTrack(item) {
     userName: data.userName || "",
     createdAt: data.createdAt || data.createdAtClient || null,
   };
+}
+
+function sortTracks(items) {
+  return [...items].sort((left, right) => {
+    const leftDate = toDate(left.createdAt)?.getTime() || 0;
+    const rightDate = toDate(right.createdAt)?.getTime() || 0;
+    return rightDate - leftDate;
+  });
 }
 
 function setUnlockedState(user) {
