@@ -291,7 +291,7 @@ function getFirestoreErrorMessage(error) {
   }
 
   if (error?.code === "unavailable") {
-    return "Firestore indisponivel agora. Tente novamente em alguns segundos.";
+    return "Nao consegui alcancar o servidor do Firestore. Se estiver no Brave, desative o Shields e extensoes de privacidade para este site e tente de novo.";
   }
 
   return error?.code ? `Firestore: ${error.code} - ${error.message}` : error.message;
@@ -302,10 +302,16 @@ function subscribeToTracks() {
 
   unsubscribeTracks = onSnapshot(
     tracksCollection,
+    { includeMetadataChanges: true },
     (snapshot) => {
       tracks = sortTracks(snapshot.docs.map((item) => normalizeFirebaseTrack(item)));
       renderTracks();
-      setDebugStatus(`Projeto ${firebaseConfig.projectId} - realtime com ${tracks.length} faixa(s).`);
+      const syncMode = snapshot.metadata.hasPendingWrites
+        ? "realtime local pendente"
+        : snapshot.metadata.fromCache
+          ? "realtime em cache"
+          : "realtime sincronizado";
+      setDebugStatus(`Projeto ${firebaseConfig.projectId} - ${syncMode} com ${tracks.length} faixa(s).`);
     },
     (error) => {
       setDebugStatus(`Projeto ${firebaseConfig.projectId} - erro no realtime: ${error.code || "desconhecido"}.`);
