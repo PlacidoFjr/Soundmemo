@@ -6,7 +6,7 @@
     <title>SoundMemo Studio</title>
     <link rel="stylesheet" href="playlist.css" />
   </head>
-  <body>
+  <body class="auth-loading">
     <header class="site-header">
       <a class="brand" href="#visao-geral" aria-label="SoundMemo Studio">
         <span class="brand-mark" aria-hidden="true">
@@ -31,13 +31,35 @@
         <a href="#playlist-final">Final</a>
       </nav>
 
-      <button class="clear-button" type="button" id="clear-button">
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M7 21a2 2 0 0 1-2-2V7h14v12a2 2 0 0 1-2 2zm3-3h2V10h-2zm4 0h2V10h-2zM9 4h6l1 1h4v2H4V5h4z" />
-        </svg>
-        Limpar
-      </button>
+      <div class="account-actions">
+        <span class="user-chip" id="user-chip" hidden></span>
+        <button class="auth-button" type="button" id="login-button">Entrar</button>
+        <button class="clear-button" type="button" id="clear-button" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 21a2 2 0 0 1-2-2V7h14v12a2 2 0 0 1-2 2zm3-3h2V10h-2zm4 0h2V10h-2zM9 4h6l1 1h4v2H4V5h4z" />
+          </svg>
+          Limpar
+        </button>
+        <button class="auth-button subtle" type="button" id="logout-button" hidden>Sair</button>
+      </div>
     </header>
+
+    <section class="auth-gate" id="auth-gate">
+      <div class="auth-card">
+        <span class="brand-mark large" aria-hidden="true">
+          <svg viewBox="0 0 40 40">
+            <path d="M20 4a16 16 0 1 0 0 32 16 16 0 0 0 0-32" />
+            <path d="M13 15.5c4.4-2.8 9.6-2.8 14 0" />
+            <path d="M13 20.5c4.4-2.3 9.6-2.3 14 0" />
+            <path d="M13 25.5c4.4-1.8 9.6-1.8 14 0" />
+          </svg>
+        </span>
+        <p class="eyebrow">acesso privado</p>
+        <h2>Entre para acessar o SoundMemo</h2>
+        <p id="auth-message">Use uma conta Google autorizada para ver e adicionar músicas.</p>
+        <button class="save-button" type="button" id="gate-login-button">Entrar com Google</button>
+      </div>
+    </section>
 
     <main class="site-main">
       <section class="section overview-section" id="visao-geral" aria-labelledby="overview-title">
@@ -98,8 +120,8 @@
         <form class="import-panel" id="music-form">
           <div class="field-grid compact-grid">
             <div class="field">
-              <label for="music-contributor">Quem está adicionando?</label>
-              <input id="music-contributor" name="contributor" type="text" placeholder="Ex: Sophia" maxlength="80" />
+              <label for="music-contributor">Perfil conectado</label>
+              <input id="music-contributor" name="contributor" type="text" placeholder="Entre com o Google" maxlength="80" readonly />
             </div>
             <div class="field grow">
               <label for="music-url">Link da música</label>
@@ -137,12 +159,12 @@
           </div>
 
           <div class="field">
-            <label for="music-memory">Memória da faixa</label>
+            <label for="music-memory">História da música</label>
             <textarea
               id="music-memory"
               name="memory"
               rows="5"
-              placeholder="Escreva a história que essa música guarda..."
+              placeholder="Conte por que ela marcou, quando ouviu ou o que ela lembra..."
               required
             ></textarea>
           </div>
@@ -150,25 +172,25 @@
           <div class="form-footer">
             <div class="field-grid selects-grid">
               <div class="field">
-                <label for="music-feeling">Sentimento</label>
+                <label for="music-feeling">Clima</label>
                 <select id="music-feeling" name="feeling">
-                  <option>saudade</option>
-                  <option>alegria</option>
-                  <option>amor</option>
-                  <option>recomeco</option>
-                  <option>forca</option>
-                  <option>calma</option>
+                  <option>Saudade</option>
+                  <option>Alegria</option>
+                  <option>Amor</option>
+                  <option>Recomeço</option>
+                  <option>Força</option>
+                  <option>Calma</option>
                 </select>
               </div>
               <div class="field">
-                <label for="music-era">Fase</label>
+                <label for="music-era">Momento</label>
                 <select id="music-era" name="era">
-                  <option>agora</option>
-                  <option>infancia</option>
-                  <option>adolescencia</option>
-                  <option>faculdade</option>
-                  <option>recomeco</option>
-                  <option>futuro</option>
+                  <option>Agora</option>
+                  <option>Infância</option>
+                  <option>Adolescência</option>
+                  <option>Faculdade</option>
+                  <option>Recomeço</option>
+                  <option>Futuro</option>
                 </select>
               </div>
             </div>
@@ -177,7 +199,7 @@
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" />
               </svg>
-              Adicionar
+              Adicionar música
             </button>
           </div>
         </form>
@@ -294,6 +316,7 @@
       </article>
     </template>
 
-    <script src="playlist.js"></script>
+    <script src="firebase-config.js"></script>
+    <script type="module" src="playlist.js"></script>
   </body>
 </html>

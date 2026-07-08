@@ -1,4 +1,47 @@
-const STORAGE_KEY = "commented-playlist-tracks";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+import {
+  GoogleAuthProvider,
+  getAuth,
+  getRedirectResult,
+  onAuthStateChanged,
+  signInWithRedirect,
+  signOut,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  getFirestore,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  writeBatch,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+const firebaseConfig = window.SOUNDMEMO_FIREBASE_CONFIG;
+
+if (!firebaseConfig?.apiKey || !firebaseConfig?.projectId || !firebaseConfig?.appId) {
+  document.body.classList.remove("auth-loading");
+  document.body.classList.add("auth-locked");
+  document.querySelector("#auth-message").textContent =
+    "Configuração do Firebase ausente. Gere o arquivo firebase-config.js antes de publicar.";
+  throw new Error("Missing Firebase config.");
+}
+
+const ALLOWED_EMAILS = [
+  "placidojunior34@gmail.com",
+  "pinheirosophia63@gmail.com",
+];
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+provider.setCustomParameters({ prompt: "select_account" });
+const tracksCollection = collection(db, "tracks");
 
 const form = document.querySelector("#music-form");
 const contributorInput = document.querySelector("#music-contributor");
@@ -33,17 +76,60 @@ const generatedTitle = document.querySelector("#generated-title");
 const generatedSubtitle = document.querySelector("#generated-subtitle");
 const copyGeneratedButton = document.querySelector("#copy-generated-button");
 const navLinks = document.querySelectorAll(".site-nav a");
+const loginButton = document.querySelector("#login-button");
+const gateLoginButton = document.querySelector("#gate-login-button");
+const logoutButton = document.querySelector("#logout-button");
+const userChip = document.querySelector("#user-chip");
+const authMessage = document.querySelector("#auth-message");
 
 let tracks = [];
+let currentUser = null;
+let unsubscribeTracks = null;
 let hasGeneratedPlaylist = false;
 
-init();
+setFormEnabled(false);
+renderTracks();
+
+getRedirectResult(auth).catch((error) => {
+  setLockedState(getAuthErrorMessage(error));
+});
+
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    currentUser = null;
+    unsubscribeFromTracks();
+    tracks = [];
+    renderTracks();
+    setLockedState("Use uma conta Google autorizada para ver e adicionar músicas.");
+    return;
+  }
+
+  if (!isAllowedUser(user)) {
+    currentUser = null;
+    unsubscribeFromTracks();
+    tracks = [];
+    renderTracks();
+    setLockedState(`O e-mail ${user.email} ainda não tem acesso ao SoundMemo.`);
+    logoutButton.hidden = false;
+    return;
+  }
+
+  currentUser = user;
+  setUnlockedState(user);
+  subscribeToTracks();
+});
 
 navLinks.forEach((link) => {
   link.addEventListener("click", () => {
     navLinks.forEach((item) => item.classList.remove("active"));
     link.classList.add("active");
   });
+});
+
+loginButton.addEventListener("click", loginWithGoogle);
+gateLoginButton.addEventListener("click", loginWithGoogle);
+logoutButton.addEventListener("click", async () => {
+  await signOut(auth);
 });
 
 previewButton.addEventListener("click", async () => {
@@ -54,7 +140,7 @@ previewButton.addEventListener("click", async () => {
   }
 
   try {
-    setStatus("Buscando dados da musica...");
+    setStatus("Buscando dados da música...");
     const track = await buildTrackFromUrl(url);
     titleInput.value = titleInput.value || track.title;
     artistInput.value = artistInput.value || track.artist;
@@ -69,27 +155,28 @@ previewButton.addEventListener("click", async () => {
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
+  if (!currentUser) {
+    setStatus("Entre com o Google antes de adicionar músicas.");
+    return;
+  }
+
   try {
-    setStatus("Salvando na biblioteca...");
+    setStatus("Salvando no Firestore...");
     const importedTrack = await buildTrackFromUrl(urlInput.value.trim());
-    const contributor = contributorInput.value.trim();
-    const track = await createTrack({
+    await createTrack({
       ...importedTrack,
       title: titleInput.value.trim(),
       artist: artistInput.value.trim(),
       memory: memoryInput.value.trim(),
       feeling: feelingInput.value,
       era: eraInput.value,
-      contributor,
     });
 
-    tracks = [track, ...tracks];
-    renderTracks();
     form.reset();
-    contributorInput.value = contributor;
+    contributorInput.value = getUserLabel(currentUser);
     previewBox.hidden = true;
     previewBox.innerHTML = "";
-    setStatus("Musica adicionada na biblioteca.");
+    setStatus("Música adicionada à biblioteca.");
   } catch (error) {
     setStatus(error.message);
   }
@@ -99,8 +186,7 @@ clearButton.addEventListener("click", async () => {
   if (!tracks.length) return;
 
   try {
-    tracks = await clearTracks();
-    renderTracks();
+    await clearTracks();
     setStatus("Biblioteca limpa.");
   } catch (error) {
     setStatus(error.message);
@@ -112,9 +198,8 @@ grid.addEventListener("click", async (event) => {
   if (!removeButton) return;
 
   try {
-    tracks = await deleteTrack(removeButton.dataset.removeId);
-    renderTracks();
-    setStatus("Musica removida.");
+    await deleteTrack(removeButton.dataset.removeId);
+    setStatus("Música removida.");
   } catch (error) {
     setStatus(error.message);
   }
@@ -127,7 +212,7 @@ copyPlaylistButton.addEventListener("click", async () => {
 
 generatePlaylistButton.addEventListener("click", () => {
   if (!tracks.length) {
-    setStatus("Adicione musicas antes de gerar a playlist.");
+    setStatus("Adicione músicas antes de gerar a playlist.");
     return;
   }
 
@@ -152,15 +237,84 @@ downloadPlaylistButton.addEventListener("click", () => {
   setStatus("Arquivo da playlist final gerado.");
 });
 
-async function init() {
+async function loginWithGoogle() {
   try {
-    tracks = await fetchTracks();
-  } catch {
-    tracks = loadLocalTracks();
-    setStatus("Modo local ativo: o backend nao respondeu.");
+    await signInWithRedirect(auth, provider);
+  } catch (error) {
+    setLockedState(getAuthErrorMessage(error));
+  }
+}
+
+function getAuthErrorMessage(error) {
+  if (error?.code === "auth/unauthorized-domain") {
+    return "Este domínio ainda não está autorizado no Firebase Authentication.";
   }
 
-  renderTracks();
+  if (error?.code === "auth/operation-not-allowed") {
+    return "Ative o login com Google no Firebase Authentication antes de entrar.";
+  }
+
+  return error?.message || "Não consegui iniciar o login com Google.";
+}
+
+function subscribeToTracks() {
+  unsubscribeFromTracks();
+
+  const tracksQuery = query(tracksCollection, orderBy("createdAt", "desc"));
+  unsubscribeTracks = onSnapshot(
+    tracksQuery,
+    (snapshot) => {
+      tracks = snapshot.docs.map((item) => normalizeFirebaseTrack(item));
+      renderTracks();
+    },
+    (error) => {
+      setStatus(error.message || "Não consegui carregar o Firestore.");
+    }
+  );
+}
+
+function unsubscribeFromTracks() {
+  if (unsubscribeTracks) {
+    unsubscribeTracks();
+    unsubscribeTracks = null;
+  }
+}
+
+async function createTrack(track) {
+  const userName = getUserLabel(currentUser);
+
+  await addDoc(tracksCollection, {
+    platform: track.platform,
+    platformLabel: track.platformLabel,
+    url: track.url,
+    title: track.title,
+    artist: track.artist,
+    coverUrl: track.coverUrl || "",
+    embedHtml: track.embedHtml,
+    memory: track.memory,
+    feeling: track.feeling,
+    era: track.era,
+    contributor: userName,
+    userId: currentUser.uid,
+    userName,
+    userEmail: currentUser.email,
+    createdAt: serverTimestamp(),
+  });
+}
+
+async function deleteTrack(id) {
+  await deleteDoc(doc(db, "tracks", id));
+}
+
+async function clearTracks() {
+  const snapshot = await getDocs(tracksCollection);
+  const batch = writeBatch(db);
+
+  snapshot.forEach((item) => {
+    batch.delete(item.ref);
+  });
+
+  await batch.commit();
 }
 
 async function buildTrackFromUrl(rawUrl) {
@@ -169,7 +323,7 @@ async function buildTrackFromUrl(rawUrl) {
   try {
     parsedUrl = new URL(rawUrl);
   } catch {
-    throw new Error("Esse link nao parece valido.");
+    throw new Error("Esse link não parece válido.");
   }
 
   if (isSpotifyUrl(parsedUrl)) {
@@ -196,77 +350,20 @@ async function importTrack(url, fallbackBuilder) {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.error || "Nao consegui importar esse link.");
+      throw new Error(data.error || "Não consegui importar esse link.");
     }
 
     return data;
-  } catch (error) {
-    if (location.protocol !== "file:") {
-      throw error;
-    }
-
+  } catch {
     return fallbackBuilder();
   }
 }
 
-async function fetchTracks() {
-  const response = await fetch("/api/tracks");
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.error || "Nao consegui carregar a biblioteca.");
-  }
-
-  return data;
-}
-
-async function createTrack(track) {
-  const response = await fetch("/api/tracks", {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(track),
-  });
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.error || "Nao consegui salvar essa musica.");
-  }
-
-  return data;
-}
-
-async function deleteTrack(id) {
-  const response = await fetch(`/api/tracks/${encodeURIComponent(id)}`, {
-    method: "DELETE",
-  });
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.error || "Nao consegui remover essa musica.");
-  }
-
-  return data;
-}
-
-async function clearTracks() {
-  const response = await fetch("/api/tracks", {
-    method: "DELETE",
-  });
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.error || "Nao consegui limpar a biblioteca.");
-  }
-
-  return data;
-}
-
 async function buildSpotifyTrack(url) {
   const embedUrl = toSpotifyEmbedUrl(url);
-  let title = "Musica do Spotify";
+  let title = "Música do Spotify";
   let artist = "Spotify";
+  let coverUrl = "";
 
   try {
     const response = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(url.href)}`);
@@ -275,6 +372,7 @@ async function buildSpotifyTrack(url) {
       const parts = splitSpotifyTitle(data.title);
       title = parts.title || title;
       artist = parts.artist || artist;
+      coverUrl = data.thumbnail_url || "";
     }
   } catch {
     // The iframe still works if oEmbed is blocked by the browser or network.
@@ -286,7 +384,7 @@ async function buildSpotifyTrack(url) {
     url: url.href,
     title,
     artist,
-    coverUrl: "",
+    coverUrl,
     embedHtml: `<iframe src="${embedUrl}" height="152" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`,
   };
 }
@@ -295,14 +393,14 @@ function buildYouTubeTrack(url) {
   const videoId = getYouTubeId(url);
 
   if (!videoId) {
-    throw new Error("Nao consegui encontrar o ID desse video do YouTube.");
+    throw new Error("Não consegui encontrar o ID desse vídeo do YouTube.");
   }
 
   return {
     platform: "youtube",
     platformLabel: "YouTube",
     url: url.href,
-    title: "Video do YouTube",
+    title: "Vídeo do YouTube",
     artist: "YouTube",
     coverUrl: `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`,
     embedHtml: `<iframe src="https://www.youtube.com/embed/${videoId}" height="240" title="YouTube video player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy"></iframe>`,
@@ -362,17 +460,17 @@ function renderTracks() {
   if (!tracks.length) {
     const empty = document.createElement("div");
     empty.className = "empty-state";
-    empty.textContent = "Sua biblioteca ainda esta vazia. Importe uma faixa para criar a primeira memoria musical.";
+    empty.textContent = "Sua biblioteca ainda está vazia. Importe uma faixa para criar a primeira memória musical.";
     grid.append(empty);
 
     const finalEmpty = document.createElement("div");
     finalEmpty.className = "empty-state";
-    finalEmpty.textContent = "A playlist final aparece aqui quando a biblioteca tiver musicas.";
+    finalEmpty.textContent = "A playlist final aparece aqui quando a biblioteca tiver músicas.";
     finalPlaylist.append(finalEmpty);
 
     const timelineEmpty = document.createElement("div");
     timelineEmpty.className = "empty-state";
-    timelineEmpty.textContent = "A linha do tempo vai mostrar quem adicionou cada musica e quando.";
+    timelineEmpty.textContent = "A linha do tempo vai mostrar quem adicionou cada música e quando.";
     timelineList.append(timelineEmpty);
     return;
   }
@@ -398,7 +496,7 @@ function createTrackCard(track) {
   item.querySelector(".era-tag").textContent = track.era;
   item.querySelector("h3").textContent = track.title;
   item.querySelector(".artist").textContent = track.artist;
-  item.querySelector(".contributor").textContent = `adicionada por ${track.contributor || "Anonimo"}`;
+  item.querySelector(".contributor").textContent = `adicionada por ${track.contributor || "Anônimo"}`;
   item.querySelector(".memory").textContent = track.memory;
   item.querySelector("a").href = track.url;
   item.querySelector("button").dataset.removeId = track.id;
@@ -422,11 +520,11 @@ function createTimelineItem(track, index) {
 
   const person = document.createElement("span");
   person.className = "timeline-person";
-  person.textContent = `${track.contributor || "Anonimo"} adicionou`;
+  person.textContent = `${track.contributor || "Anônimo"} adicionou`;
 
   const date = document.createElement("time");
   date.className = "timeline-date";
-  date.dateTime = track.createdAt || "";
+  date.dateTime = getIsoDate(track.createdAt);
   date.textContent = formatTrackDate(track.createdAt);
 
   const title = document.createElement("h3");
@@ -463,21 +561,6 @@ function createTimelineItem(track, index) {
   return item;
 }
 
-function formatTrackDate(value) {
-  if (!value) return "data nao registrada";
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "data nao registrada";
-
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-}
-
 function createFinalItem(track, index) {
   const item = document.createElement("article");
   item.className = "final-item";
@@ -493,7 +576,7 @@ function createFinalItem(track, index) {
   title.textContent = track.title;
 
   const detail = document.createElement("span");
-  detail.textContent = `${track.artist} - ${track.platformLabel} - ${track.contributor || "Anonimo"}`;
+  detail.textContent = `${track.artist} - ${track.platformLabel} - ${track.contributor || "Anônimo"}`;
 
   const link = document.createElement("a");
   link.href = track.url;
@@ -523,8 +606,8 @@ function updateDashboard() {
     : "";
   featureTitle.textContent = latestTrack?.title || "Sua trilha ganha forma aqui";
   featureSubtitle.textContent = latestTrack
-    ? `${latestTrack.artist} - ${latestTrack.feeling} / ${latestTrack.era} - ${latestTrack.contributor || "Anonimo"}`
-    : "Importe uma faixa para ver capa, player e historia em destaque.";
+    ? `${latestTrack.artist} - ${latestTrack.feeling} / ${latestTrack.era} - ${latestTrack.contributor || "Anônimo"}`
+    : "Importe uma faixa para ver capa, player e história em destaque.";
 }
 
 function renderGeneratedPlaylist() {
@@ -539,7 +622,7 @@ function renderGeneratedPlaylist() {
 
   generatedPlaylist.hidden = false;
   generatedTitle.textContent = name;
-  generatedSubtitle.textContent = `${tracks.length} musicas criadas em conjunto: ${spotifyTotal} do Spotify e ${youtubeTotal} do YouTube.`;
+  generatedSubtitle.textContent = `${tracks.length} músicas criadas em conjunto: ${spotifyTotal} do Spotify e ${youtubeTotal} do YouTube.`;
 
   generatedCover.innerHTML = "";
   const coverTracks = [...tracks.slice(0, 4)];
@@ -559,6 +642,66 @@ function renderGeneratedPlaylist() {
   });
 }
 
+function normalizeFirebaseTrack(item) {
+  const data = item.data();
+  return {
+    id: item.id,
+    platform: data.platform || "spotify",
+    platformLabel: data.platformLabel || "Spotify",
+    url: data.url || "",
+    title: data.title || "Música",
+    artist: data.artist || "Artista",
+    coverUrl: data.coverUrl || "",
+    embedHtml: data.embedHtml || "",
+    memory: data.memory || "",
+    feeling: data.feeling || "",
+    era: data.era || "",
+    contributor: data.contributor || data.userName || data.userEmail || "Anônimo",
+    userEmail: data.userEmail || "",
+    userName: data.userName || "",
+    createdAt: data.createdAt || null,
+  };
+}
+
+function setUnlockedState(user) {
+  document.body.classList.remove("auth-loading", "auth-locked");
+  document.body.classList.add("auth-unlocked");
+  setFormEnabled(true);
+
+  const label = getUserLabel(user);
+  contributorInput.value = label;
+  userChip.textContent = label;
+  userChip.hidden = false;
+  loginButton.hidden = true;
+  logoutButton.hidden = false;
+  clearButton.hidden = false;
+}
+
+function setLockedState(message) {
+  document.body.classList.remove("auth-loading", "auth-unlocked");
+  document.body.classList.add("auth-locked");
+  setFormEnabled(false);
+  authMessage.textContent = message;
+  contributorInput.value = "";
+  userChip.hidden = true;
+  loginButton.hidden = false;
+  clearButton.hidden = true;
+}
+
+function setFormEnabled(enabled) {
+  form.querySelectorAll("input, textarea, select, button").forEach((element) => {
+    element.disabled = !enabled;
+  });
+}
+
+function isAllowedUser(user) {
+  return ALLOWED_EMAILS.includes(String(user.email || "").toLowerCase());
+}
+
+function getUserLabel(user) {
+  return user?.displayName || user?.email || "Usuário";
+}
+
 function buildPlaylistText() {
   if (!tracks.length) return "Playlist final vazia.";
 
@@ -568,16 +711,42 @@ function buildPlaylistText() {
       return [
         `${index + 1}. ${track.title} - ${track.artist}`,
         `Plataforma: ${track.platformLabel}`,
-        `Adicionada por: ${track.contributor || "Anonimo"}`,
+        `Adicionada por: ${track.contributor || "Anônimo"}`,
         `Sentimento: ${track.feeling}`,
-        `Fase: ${track.era}`,
+        `Momento: ${track.era}`,
         `Link: ${track.url}`,
-        `Memoria: ${track.memory}`,
+        `Memória: ${track.memory}`,
       ].join("\n");
     })
     .join("\n\n");
 
   return `${name}\n${"=".repeat(name.length)}\n\n${items}`;
+}
+
+function formatTrackDate(value) {
+  const date = toDate(value);
+  if (!date) return "data não registrada";
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function getIsoDate(value) {
+  const date = toDate(value);
+  return date ? date.toISOString() : "";
+}
+
+function toDate(value) {
+  if (!value) return null;
+  if (typeof value.toDate === "function") return value.toDate();
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 async function copyText(text) {
@@ -595,14 +764,6 @@ async function copyText(text) {
   textarea.select();
   document.execCommand("copy");
   textarea.remove();
-}
-
-function loadLocalTracks() {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-  } catch {
-    return [];
-  }
 }
 
 function setStatus(message) {

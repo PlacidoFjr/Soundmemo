@@ -2,6 +2,7 @@ data/
 node_modules/
 .env
 .env.*
+firebase-config.js
 output/
 tmp/
 linktree-source.html
