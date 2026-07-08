@@ -56,8 +56,21 @@
         </span>
         <p class="eyebrow">acesso privado</p>
         <h2>Entre para acessar o SoundMemo</h2>
-        <p id="auth-message">Use uma conta Google autorizada para ver e adicionar músicas.</p>
-        <button class="save-button" type="button" id="gate-login-button">Entrar com Google</button>
+        <p id="auth-message">Use o e-mail e a senha cadastrados no Firebase.</p>
+        <form class="auth-form" id="auth-form">
+          <label for="auth-email">E-mail</label>
+          <input id="auth-email" name="email" type="email" autocomplete="email" placeholder="seu@email.com" required />
+          <label for="auth-password">Senha</label>
+          <input
+            id="auth-password"
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            placeholder="Sua senha"
+            required
+          />
+          <button class="save-button" type="submit">Entrar</button>
+        </form>
       </div>
     </section>
 
@@ -121,7 +134,7 @@
           <div class="field-grid compact-grid">
             <div class="field">
               <label for="music-contributor">Perfil conectado</label>
-              <input id="music-contributor" name="contributor" type="text" placeholder="Entre com o Google" maxlength="80" readonly />
+              <input id="music-contributor" name="contributor" type="text" placeholder="Entre para continuar" maxlength="80" readonly />
             </div>
             <div class="field grow">
               <label for="music-url">Link da música</label>

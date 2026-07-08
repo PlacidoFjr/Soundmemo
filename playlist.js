@@ -1,10 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
-  GoogleAuthProvider,
   getAuth,
-  getRedirectResult,
   onAuthStateChanged,
-  signInWithRedirect,
+  signInWithEmailAndPassword,
   signOut,
 } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
 import {
@@ -39,8 +37,6 @@ const ALLOWED_EMAILS = [
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const provider = new GoogleAuthProvider();
-provider.setCustomParameters({ prompt: "select_account" });
 const tracksCollection = collection(db, "tracks");
 
 const form = document.querySelector("#music-form");
@@ -76,8 +72,10 @@ const generatedTitle = document.querySelector("#generated-title");
 const generatedSubtitle = document.querySelector("#generated-subtitle");
 const copyGeneratedButton = document.querySelector("#copy-generated-button");
 const navLinks = document.querySelectorAll(".site-nav a");
+const authForm = document.querySelector("#auth-form");
+const authEmailInput = document.querySelector("#auth-email");
+const authPasswordInput = document.querySelector("#auth-password");
 const loginButton = document.querySelector("#login-button");
-const gateLoginButton = document.querySelector("#gate-login-button");
 const logoutButton = document.querySelector("#logout-button");
 const userChip = document.querySelector("#user-chip");
 const authMessage = document.querySelector("#auth-message");
@@ -90,17 +88,13 @@ let hasGeneratedPlaylist = false;
 setFormEnabled(false);
 renderTracks();
 
-getRedirectResult(auth).catch((error) => {
-  setLockedState(getAuthErrorMessage(error));
-});
-
 onAuthStateChanged(auth, (user) => {
   if (!user) {
     currentUser = null;
     unsubscribeFromTracks();
     tracks = [];
     renderTracks();
-    setLockedState("Use uma conta Google autorizada para ver e adicionar músicas.");
+    setLockedState("Use o e-mail e a senha cadastrados no Firebase.");
     return;
   }
 
@@ -126,8 +120,10 @@ navLinks.forEach((link) => {
   });
 });
 
-loginButton.addEventListener("click", loginWithGoogle);
-gateLoginButton.addEventListener("click", loginWithGoogle);
+loginButton.addEventListener("click", () => {
+  authEmailInput.focus();
+});
+authForm.addEventListener("submit", loginWithEmail);
 logoutButton.addEventListener("click", async () => {
   await signOut(auth);
 });
@@ -156,7 +152,7 @@ form.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   if (!currentUser) {
-    setStatus("Entre com o Google antes de adicionar músicas.");
+    setStatus("Entre com sua conta antes de adicionar músicas.");
     return;
   }
 
@@ -237,24 +233,43 @@ downloadPlaylistButton.addEventListener("click", () => {
   setStatus("Arquivo da playlist final gerado.");
 });
 
-async function loginWithGoogle() {
+async function loginWithEmail(event) {
+  event.preventDefault();
+
   try {
-    await signInWithRedirect(auth, provider);
+    const email = authEmailInput.value.trim();
+    const password = authPasswordInput.value;
+
+    authMessage.textContent = "Entrando...";
+    await signInWithEmailAndPassword(auth, email, password);
+    authPasswordInput.value = "";
   } catch (error) {
-    setLockedState(getAuthErrorMessage(error));
+    setLockedState(getEmailAuthErrorMessage(error));
   }
 }
 
-function getAuthErrorMessage(error) {
-  if (error?.code === "auth/unauthorized-domain") {
-    return "Este domínio ainda não está autorizado no Firebase Authentication.";
-  }
-
+function getEmailAuthErrorMessage(error) {
   if (error?.code === "auth/operation-not-allowed") {
-    return "Ative o login com Google no Firebase Authentication antes de entrar.";
+    return "Ative o login por e-mail e senha no Firebase Authentication.";
   }
 
-  return error?.message || "Não consegui iniciar o login com Google.";
+  if (
+    error?.code === "auth/invalid-credential" ||
+    error?.code === "auth/user-not-found" ||
+    error?.code === "auth/wrong-password"
+  ) {
+    return "E-mail ou senha incorretos.";
+  }
+
+  if (error?.code === "auth/too-many-requests") {
+    return "Muitas tentativas. Espere um pouco e tente novamente.";
+  }
+
+  if (error?.code === "auth/api-key-not-valid") {
+    return "A API key do Firebase na Vercel não é válida para este projeto.";
+  }
+
+  return error?.message || "Não consegui entrar com esse e-mail.";
 }
 
 function subscribeToTracks() {

@@ -263,6 +263,21 @@ body.auth-locked .site-main {
   line-height: 1.5;
 }
 
+.auth-form {
+  display: grid;
+  gap: 10px;
+  text-align: left;
+}
+
+.auth-form label {
+  margin-top: 2px;
+}
+
+.auth-form .save-button {
+  width: 100%;
+  margin-top: 6px;
+}
+
 .section {
   scroll-margin-top: 92px;
   margin-bottom: 22px;

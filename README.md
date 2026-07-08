@@ -20,14 +20,15 @@ Trocar o armazenamento local em `data/tracks.json` por Firebase Auth + Firestore
 
 ## Firebase
 
-O app usa Firebase Auth com Google e Firestore na coleção `tracks`.
+O app usa Firebase Auth com e-mail/senha e Firestore na coleção `tracks`.
 
 No console do Firebase:
 
-1. Ative Authentication > Google.
+1. Ative Authentication > Método de login > E-mail/senha.
 2. Ative Firestore.
 3. Copie as regras de `firestore.rules` para Firestore > Regras.
 4. Em Authentication > Settings > Authorized domains, adicione o domínio da Vercel quando publicar.
+5. Em Authentication > Usuários, crie os usuários permitidos no app.
 
 ## Configuração da Vercel
 
