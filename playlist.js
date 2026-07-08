@@ -13,7 +13,7 @@ import {
   getDocFromServer,
   getDocs,
   getDocsFromServer,
-  getFirestore,
+  initializeFirestore,
   onSnapshot,
   serverTimestamp,
   writeBatch,
@@ -36,7 +36,10 @@ const ALLOWED_EMAILS = [
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+  ignoreUndefinedProperties: true,
+});
 const tracksCollection = collection(db, "tracks");
 
 const form = document.querySelector("#music-form");
