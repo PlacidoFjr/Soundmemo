@@ -1,0 +1,7 @@
+data/
+node_modules/
+.env
+.env.*
+output/
+tmp/
+linktree-source.html

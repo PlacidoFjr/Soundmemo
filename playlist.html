@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SoundMemo Studio</title>
+    <link rel="stylesheet" href="playlist.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#visao-geral" aria-label="SoundMemo Studio">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 40 40">
+            <path d="M20 4a16 16 0 1 0 0 32 16 16 0 0 0 0-32" />
+            <path d="M13 15.5c4.4-2.8 9.6-2.8 14 0" />
+            <path d="M13 20.5c4.4-2.3 9.6-2.3 14 0" />
+            <path d="M13 25.5c4.4-1.8 9.6-1.8 14 0" />
+          </svg>
+        </span>
+        <span class="brand-text">
+          <strong>SoundMemo</strong>
+          <small>studio</small>
+        </span>
+      </a>
+
+      <nav class="site-nav" aria-label="Seções">
+        <a class="active" href="#visao-geral">Geral</a>
+        <a href="#importar">Adicionar</a>
+        <a href="#biblioteca">Biblioteca</a>
+        <a href="#timeline-section">Timeline</a>
+        <a href="#playlist-final">Final</a>
+      </nav>
+
+      <button class="clear-button" type="button" id="clear-button">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 21a2 2 0 0 1-2-2V7h14v12a2 2 0 0 1-2 2zm3-3h2V10h-2zm4 0h2V10h-2zM9 4h6l1 1h4v2H4V5h4z" />
+        </svg>
+        Limpar
+      </button>
+    </header>
+
+    <main class="site-main">
+      <section class="section overview-section" id="visao-geral" aria-labelledby="overview-title">
+        <div class="section-heading compact">
+          <div>
+            <p class="eyebrow">studio</p>
+            <h1 id="overview-title">Playlist comentada</h1>
+          </div>
+          <p class="section-meta">Biblioteca colaborativa de músicas, memórias e momentos.</p>
+        </div>
+
+        <div class="overview-grid">
+          <article class="feature-panel" aria-label="Faixa em destaque">
+            <div class="feature-cover" id="feature-cover">
+              <div class="cover-fallback" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+            </div>
+            <div class="feature-copy">
+              <p class="eyebrow">em destaque</p>
+              <h2 id="feature-title">Sua trilha ganha forma aqui</h2>
+              <p id="feature-subtitle">Nenhuma faixa adicionada ainda.</p>
+            </div>
+          </article>
+
+          <aside class="metrics-panel" aria-label="Resumo">
+            <div class="metric-card">
+              <span>Faixas</span>
+              <strong id="track-count">0</strong>
+            </div>
+            <div class="metric-card">
+              <span>Spotify</span>
+              <strong id="spotify-count">0</strong>
+            </div>
+            <div class="metric-card">
+              <span>YouTube</span>
+              <strong id="youtube-count">0</strong>
+            </div>
+            <div class="metric-card">
+              <span>Memórias</span>
+              <strong id="memory-count">0</strong>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="section add-section" id="importar" aria-labelledby="add-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">entrada</p>
+            <h2 id="add-title">Adicionar música</h2>
+          </div>
+          <p class="form-note" id="form-status" role="status" aria-live="polite"></p>
+        </div>
+
+        <form class="import-panel" id="music-form">
+          <div class="field-grid compact-grid">
+            <div class="field">
+              <label for="music-contributor">Quem está adicionando?</label>
+              <input id="music-contributor" name="contributor" type="text" placeholder="Ex: Sophia" maxlength="80" />
+            </div>
+            <div class="field grow">
+              <label for="music-url">Link da música</label>
+              <div class="url-row">
+                <input
+                  id="music-url"
+                  name="musicUrl"
+                  type="url"
+                  placeholder="Spotify ou YouTube"
+                  autocomplete="off"
+                  required
+                />
+                <button type="button" id="preview-button">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m10 16 6-4-6-4z" />
+                    <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20m0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16" />
+                  </svg>
+                  Prévia
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="detected-preview" id="detected-preview" hidden></div>
+
+          <div class="field-grid">
+            <div class="field">
+              <label for="music-title">Título</label>
+              <input id="music-title" name="title" type="text" placeholder="Ex: Yellow" required />
+            </div>
+            <div class="field">
+              <label for="music-artist">Artista / canal</label>
+              <input id="music-artist" name="artist" type="text" placeholder="Ex: Coldplay" required />
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="music-memory">Memória da faixa</label>
+            <textarea
+              id="music-memory"
+              name="memory"
+              rows="5"
+              placeholder="Escreva a história que essa música guarda..."
+              required
+            ></textarea>
+          </div>
+
+          <div class="form-footer">
+            <div class="field-grid selects-grid">
+              <div class="field">
+                <label for="music-feeling">Sentimento</label>
+                <select id="music-feeling" name="feeling">
+                  <option>saudade</option>
+                  <option>alegria</option>
+                  <option>amor</option>
+                  <option>recomeco</option>
+                  <option>forca</option>
+                  <option>calma</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="music-era">Fase</label>
+                <select id="music-era" name="era">
+                  <option>agora</option>
+                  <option>infancia</option>
+                  <option>adolescencia</option>
+                  <option>faculdade</option>
+                  <option>recomeco</option>
+                  <option>futuro</option>
+                </select>
+              </div>
+            </div>
+
+            <button class="save-button" type="submit">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z" />
+              </svg>
+              Adicionar
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="section playlist-section" id="biblioteca" aria-labelledby="playlist-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">biblioteca</p>
+            <h2 id="playlist-title">Histórias salvas</h2>
+          </div>
+        </div>
+        <div class="playlist-grid" id="playlist-grid"></div>
+      </section>
+
+      <section class="section timeline-section" id="timeline-section" aria-labelledby="timeline-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">histórico</p>
+            <h2 id="timeline-title">Linha do tempo</h2>
+          </div>
+        </div>
+        <div class="timeline-list" id="timeline-list"></div>
+      </section>
+
+      <section class="section final-section" id="playlist-final" aria-labelledby="final-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">resultado</p>
+            <h2 id="final-title">Playlist final</h2>
+          </div>
+          <div class="final-actions">
+            <button type="button" id="copy-playlist-button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8 7a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9h-2V7h-9v12H8z" />
+                <path d="M3 11a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zm2 0v9h9v-9z" />
+              </svg>
+              Copiar links
+            </button>
+            <button type="button" id="download-playlist-button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M11 3h2v10.2l3.6-3.6L18 11l-6 6-6-6 1.4-1.4 3.6 3.6z" />
+                <path d="M5 19h14v2H5z" />
+              </svg>
+              Baixar .txt
+            </button>
+          </div>
+        </div>
+
+        <div class="playlist-builder" aria-label="Gerador de playlist">
+          <div>
+            <label for="playlist-name">Nome da playlist</label>
+            <input id="playlist-name" type="text" value="Nossa playlist comentada" maxlength="90" />
+          </div>
+          <button type="button" id="generate-playlist-button">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            Gerar playlist
+          </button>
+        </div>
+
+        <article class="generated-playlist" id="generated-playlist" hidden>
+          <div class="generated-cover" id="generated-cover"></div>
+          <div class="generated-info">
+            <p class="eyebrow">playlist criada</p>
+            <h3 id="generated-title">Nossa playlist comentada</h3>
+            <p id="generated-subtitle">0 músicas organizadas em uma playlist final.</p>
+            <div class="generated-actions">
+              <a href="#final-playlist">Ver ordem</a>
+              <button type="button" id="copy-generated-button">Copiar playlist</button>
+            </div>
+          </div>
+        </article>
+
+        <div class="final-list" id="final-playlist"></div>
+      </section>
+    </main>
+
+    <template id="track-template">
+      <article class="track-card">
+        <div class="track-cover"></div>
+        <div class="track-content">
+          <div class="track-line">
+            <div>
+              <h3></h3>
+              <p class="artist"></p>
+              <p class="contributor"></p>
+            </div>
+            <span class="platform-pill"></span>
+          </div>
+          <div class="embed-frame"></div>
+          <p class="memory"></p>
+          <div class="track-footer">
+            <div class="track-tags">
+              <span class="tag feeling-tag"></span>
+              <span class="tag era-tag"></span>
+            </div>
+            <div class="track-actions">
+              <a target="_blank" rel="noreferrer noopener" aria-label="Abrir link original">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14 3h7v7h-2V6.4l-8.3 8.3-1.4-1.4L17.6 5H14z" />
+                  <path d="M5 5h6v2H7v10h10v-4h2v6H5z" />
+                </svg>
+              </a>
+              <button type="button" aria-label="Remover faixa">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 21a2 2 0 0 1-2-2V7h14v12a2 2 0 0 1-2 2zm3-3h2V10h-2zm4 0h2V10h-2zM9 4h6l1 1h4v2H4V5h4z" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <script src="playlist.js"></script>
+  </body>
+</html>
