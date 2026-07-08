@@ -701,6 +701,19 @@ select:focus {
   text-align: right;
 }
 
+.status-stack {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+}
+
+.debug-note {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 12px;
+  text-align: right;
+}
+
 .playlist-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

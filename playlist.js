@@ -50,6 +50,7 @@ const eraInput = document.querySelector("#music-era");
 const previewButton = document.querySelector("#preview-button");
 const previewBox = document.querySelector("#detected-preview");
 const statusText = document.querySelector("#form-status");
+const debugStatus = document.querySelector("#debug-status");
 const grid = document.querySelector("#playlist-grid");
 const clearButton = document.querySelector("#clear-button");
 const template = document.querySelector("#track-template");
@@ -177,7 +178,7 @@ form.addEventListener("submit", async (event) => {
     contributorInput.value = getUserLabel(currentUser);
     previewBox.hidden = true;
     previewBox.innerHTML = "";
-    await refreshTracksFromServer();
+    await refreshTracksFromServer(savedTrackId);
     setStatus(`Música salva no Firestore. ID: ${savedTrackId}`);
   } catch (error) {
     setStatus(getFirestoreErrorMessage(error));
@@ -304,8 +305,10 @@ function subscribeToTracks() {
     (snapshot) => {
       tracks = sortTracks(snapshot.docs.map((item) => normalizeFirebaseTrack(item)));
       renderTracks();
+      setDebugStatus(`Projeto ${firebaseConfig.projectId} - realtime com ${tracks.length} faixa(s).`);
     },
     (error) => {
+      setDebugStatus(`Projeto ${firebaseConfig.projectId} - erro no realtime: ${error.code || "desconhecido"}.`);
       setStatus(getFirestoreErrorMessage(error));
     }
   );
@@ -348,11 +351,20 @@ async function createTrack(track) {
   return savedDoc.id;
 }
 
-async function refreshTracksFromServer() {
+async function refreshTracksFromServer(expectedTrackId) {
   const snapshot = await getDocsFromServer(tracksCollection);
   const serverTracks = sortTracks(snapshot.docs.map((item) => normalizeFirebaseTrack(item)));
   tracks = serverTracks;
   renderTracks();
+
+  setDebugStatus(`Projeto ${firebaseConfig.projectId} - servidor devolveu ${serverTracks.length} faixa(s).`);
+
+  if (expectedTrackId && !serverTracks.some((track) => track.id === expectedTrackId)) {
+    throw new Error(
+      `O Firestore confirmou o documento ${expectedTrackId}, mas a leitura do servidor não trouxe essa faixa no projeto ${firebaseConfig.projectId}.`
+    );
+  }
+
   return serverTracks;
 }
 
@@ -729,6 +741,7 @@ function setUnlockedState(user) {
   document.body.classList.remove("auth-loading", "auth-locked");
   document.body.classList.add("auth-unlocked");
   setFormEnabled(true);
+  setDebugStatus(`Projeto ${firebaseConfig.projectId} - autenticado como ${user.email || "usuario"}.`);
 
   const label = getUserLabel(user);
   contributorInput.value = label;
@@ -746,6 +759,7 @@ function setLockedState(message) {
   document.body.classList.add("auth-locked");
   setFormEnabled(false);
   authMessage.textContent = message;
+  setDebugStatus(`Projeto ${firebaseConfig.projectId} - aguardando login.`);
   contributorInput.value = "";
   userChip.hidden = true;
   loginButton.hidden = false;
@@ -838,4 +852,9 @@ async function copyText(text) {
 
 function setStatus(message) {
   statusText.textContent = message;
+}
+
+function setDebugStatus(message) {
+  if (!debugStatus) return;
+  debugStatus.textContent = message;
 }
