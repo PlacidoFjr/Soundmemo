@@ -43,3 +43,5 @@ SOUNDMEMO_FIREBASE_APP_ID
 ```
 
 Para rodar localmente, copie `firebase-config.example.js` para `firebase-config.js` e preencha com a configuração do app web no Firebase.
+
+O deploy da Vercel publica apenas a pasta `dist/`, gerada por `npm run build`.

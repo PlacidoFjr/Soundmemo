@@ -3,6 +3,7 @@ node_modules/
 .env
 .env.*
 firebase-config.js
+dist/
 output/
 tmp/
 linktree-source.html

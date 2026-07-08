@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "build": "node scripts/write-firebase-config.js",
+    "build": "node scripts/build-static.js",
+    "config:local": "node scripts/write-firebase-config.js",
     "start": "node server.js"
   }
 }
