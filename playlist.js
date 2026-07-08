@@ -65,6 +65,8 @@ const featureCover = document.querySelector("#feature-cover");
 const featureTitle = document.querySelector("#feature-title");
 const featureSubtitle = document.querySelector("#feature-subtitle");
 const timelineList = document.querySelector("#timeline-list");
+const timelineMonthInput = document.querySelector("#timeline-month");
+const timelineSummary = document.querySelector("#timeline-summary");
 const finalPlaylist = document.querySelector("#final-playlist");
 const copyPlaylistButton = document.querySelector("#copy-playlist-button");
 const downloadPlaylistButton = document.querySelector("#download-playlist-button");
@@ -75,6 +77,7 @@ const generatedCover = document.querySelector("#generated-cover");
 const generatedTitle = document.querySelector("#generated-title");
 const generatedSubtitle = document.querySelector("#generated-subtitle");
 const copyGeneratedButton = document.querySelector("#copy-generated-button");
+const viewLinks = document.querySelectorAll("[data-view-link]");
 const navLinks = document.querySelectorAll(".site-nav a");
 const authForm = document.querySelector("#auth-form");
 const authEmailInput = document.querySelector("#auth-email");
@@ -84,13 +87,17 @@ const loginButton = document.querySelector("#login-button");
 const logoutButton = document.querySelector("#logout-button");
 const userChip = document.querySelector("#user-chip");
 const authMessage = document.querySelector("#auth-message");
+const viewSections = document.querySelectorAll(".view-section");
 
 let tracks = [];
 let currentUser = null;
 let unsubscribeTracks = null;
 let hasGeneratedPlaylist = false;
+let activeView = resolveViewFromLocation();
+let selectedTimelineMonth = "all";
 
 setFormEnabled(false);
+applyView(activeView, { replaceHistory: true });
 renderTracks();
 
 onAuthStateChanged(auth, (user) => {
@@ -121,11 +128,28 @@ onAuthStateChanged(auth, (user) => {
   subscribeToTracks();
 });
 
-navLinks.forEach((link) => {
-  link.addEventListener("click", () => {
-    navLinks.forEach((item) => item.classList.remove("active"));
-    link.classList.add("active");
+viewLinks.forEach((link) => {
+  link.addEventListener("click", (event) => {
+    const nextView = link.dataset.viewLink;
+    if (!nextView) return;
+
+    event.preventDefault();
+    applyView(nextView, {
+      updateHistory: true,
+      hash: link.hash,
+    });
   });
+});
+
+window.addEventListener("popstate", () => {
+  applyView(resolveViewFromLocation());
+});
+
+window.addEventListener("hashchange", () => {
+  const legacyView = resolveViewFromLocation();
+  if (legacyView !== activeView) {
+    applyView(legacyView);
+  }
 });
 
 loginButton.addEventListener("click", () => {
@@ -135,6 +159,10 @@ authForm.addEventListener("submit", loginWithEmail);
 passwordToggle.addEventListener("click", togglePasswordVisibility);
 logoutButton.addEventListener("click", async () => {
   await signOut(auth);
+});
+timelineMonthInput.addEventListener("change", () => {
+  selectedTimelineMonth = timelineMonthInput.value;
+  renderTracks();
 });
 
 previewButton.addEventListener("click", async () => {
@@ -224,6 +252,7 @@ generatePlaylistButton.addEventListener("click", () => {
 
   hasGeneratedPlaylist = true;
   renderGeneratedPlaylist();
+  applyView("final", { updateHistory: true, hash: "#final-playlist" });
   generatedPlaylist.scrollIntoView({ behavior: "smooth", block: "center" });
   setStatus("Playlist final gerada.");
 });
@@ -298,6 +327,48 @@ function getFirestoreErrorMessage(error) {
   }
 
   return error?.code ? `Firestore: ${error.code} - ${error.message}` : error.message;
+}
+
+function resolveViewFromLocation() {
+  const params = new URLSearchParams(window.location.search);
+  const queryView = params.get("view");
+  if (isKnownView(queryView)) return queryView;
+
+  const hash = window.location.hash;
+  if (hash === "#visao-geral") return "geral";
+  if (hash === "#importar") return "adicionar";
+  if (hash === "#biblioteca") return "biblioteca";
+  if (hash === "#timeline-section") return "timeline";
+  if (hash === "#playlist-final" || hash === "#final-playlist") return "final";
+
+  return "geral";
+}
+
+function isKnownView(value) {
+  return ["geral", "adicionar", "biblioteca", "timeline", "final"].includes(value);
+}
+
+function applyView(view, { updateHistory = false, replaceHistory = false, hash = "" } = {}) {
+  activeView = isKnownView(view) ? view : "geral";
+
+  viewSections.forEach((section) => {
+    section.hidden = section.dataset.view !== activeView;
+  });
+
+  navLinks.forEach((link) => {
+    link.classList.toggle("active", link.dataset.viewLink === activeView);
+  });
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("view", activeView);
+  url.hash = hash || "";
+
+  if (replaceHistory) {
+    window.history.replaceState({}, "", url);
+  } else if (updateHistory) {
+    window.history.pushState({}, "", url);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 }
 
 function subscribeToTracks() {
@@ -529,6 +600,7 @@ function renderTracks() {
   grid.innerHTML = "";
   timelineList.innerHTML = "";
   finalPlaylist.innerHTML = "";
+  syncTimelineFilters();
   updateDashboard();
   renderGeneratedPlaylist();
 
@@ -552,8 +624,22 @@ function renderTracks() {
 
   tracks.forEach((track, index) => {
     grid.append(createTrackCard(track));
-    timelineList.append(createTimelineItem(track, index));
     finalPlaylist.append(createFinalItem(track, index));
+  });
+
+  const visibleTimelineTracks = getVisibleTimelineTracks();
+  updateTimelineSummary(visibleTimelineTracks);
+
+  if (!visibleTimelineTracks.length) {
+    const timelineEmpty = document.createElement("div");
+    timelineEmpty.className = "empty-state";
+    timelineEmpty.textContent = "Nenhuma entrada encontrada para esse mês.";
+    timelineList.append(timelineEmpty);
+    return;
+  }
+
+  visibleTimelineTracks.forEach((track, index) => {
+    timelineList.append(createTimelineItem(track, index));
   });
 }
 
@@ -585,7 +671,14 @@ function createTimelineItem(track, index) {
 
   const marker = document.createElement("span");
   marker.className = "timeline-marker";
-  marker.textContent = String(index + 1).padStart(2, "0");
+
+  const markerDay = document.createElement("strong");
+  markerDay.textContent = getTimelineDay(track.createdAt) || String(index + 1).padStart(2, "0");
+
+  const markerMonth = document.createElement("small");
+  markerMonth.textContent = getTimelineMonthShort(track.createdAt);
+
+  marker.append(markerDay, markerMonth);
 
   const card = document.createElement("div");
   card.className = "timeline-card";
@@ -634,6 +727,65 @@ function createTimelineItem(track, index) {
   item.append(marker, card);
 
   return item;
+}
+
+function syncTimelineFilters() {
+  const monthOptions = buildTimelineMonthOptions();
+
+  timelineMonthInput.innerHTML = "";
+
+  if (!monthOptions.length) {
+    selectedTimelineMonth = "all";
+    timelineMonthInput.disabled = true;
+    timelineSummary.textContent = "Sem histórico ainda.";
+    return;
+  }
+
+  timelineMonthInput.disabled = false;
+
+  const allOption = document.createElement("option");
+  allOption.value = "all";
+  allOption.textContent = "Todo o histórico";
+  timelineMonthInput.append(allOption);
+
+  monthOptions.forEach((monthKey) => {
+    const option = document.createElement("option");
+    option.value = monthKey;
+    option.textContent = formatMonthLabel(monthKey);
+    timelineMonthInput.append(option);
+  });
+
+  if (selectedTimelineMonth !== "all" && !monthOptions.includes(selectedTimelineMonth)) {
+    selectedTimelineMonth = "all";
+  }
+
+  timelineMonthInput.value = selectedTimelineMonth;
+}
+
+function buildTimelineMonthOptions() {
+  return [...new Set(tracks.map((track) => getMonthKey(track.createdAt)).filter(Boolean))];
+}
+
+function getVisibleTimelineTracks() {
+  if (selectedTimelineMonth === "all") return tracks;
+
+  return tracks.filter((track) => getMonthKey(track.createdAt) === selectedTimelineMonth);
+}
+
+function updateTimelineSummary(visibleTimelineTracks) {
+  const monthCount = buildTimelineMonthOptions().length;
+
+  if (!tracks.length) {
+    timelineSummary.textContent = "Sem histórico ainda.";
+    return;
+  }
+
+  if (selectedTimelineMonth === "all") {
+    timelineSummary.textContent = `${tracks.length} registro(s) espalhados por ${monthCount} mês(es).`;
+    return;
+  }
+
+  timelineSummary.textContent = `${visibleTimelineTracks.length} registro(s) em ${formatMonthLabel(selectedTimelineMonth)}.`;
 }
 
 function createFinalItem(track, index) {
@@ -822,10 +974,49 @@ function formatTrackDate(value) {
 
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
-    month: "short",
+    month: "long",
     year: "numeric",
+    weekday: "short",
     hour: "2-digit",
     minute: "2-digit",
+  }).format(date);
+}
+
+function getTimelineDay(value) {
+  const date = toDate(value);
+  if (!date) return "";
+  return String(date.getDate()).padStart(2, "0");
+}
+
+function getTimelineMonthShort(value) {
+  const date = toDate(value);
+  if (!date) return "--";
+
+  return new Intl.DateTimeFormat("pt-BR", { month: "short" })
+    .format(date)
+    .replace(".", "")
+    .slice(0, 3);
+}
+
+function getMonthKey(value) {
+  const date = toDate(value);
+  if (!date) return null;
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
+}
+
+function formatMonthLabel(key) {
+  if (!key || key === "all") return "Todo o histórico";
+
+  const [year, month] = key.split("-");
+  const date = new Date(Number(year), Number(month) - 1, 1);
+  if (Number.isNaN(date.getTime())) return key;
+
+  return new Intl.DateTimeFormat("pt-BR", {
+    month: "long",
+    year: "numeric",
   }).format(date);
 }
 

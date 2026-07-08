@@ -8,7 +8,7 @@
   </head>
   <body class="auth-loading">
     <header class="site-header">
-      <a class="brand" href="#visao-geral" aria-label="SoundMemo Studio">
+      <a class="brand" href="?view=geral" data-view-link="geral" aria-label="SoundMemo Studio">
         <span class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 40 40">
             <path d="M20 4a16 16 0 1 0 0 32 16 16 0 0 0 0-32" />
@@ -24,11 +24,11 @@
       </a>
 
       <nav class="site-nav" aria-label="Seções">
-        <a class="active" href="#visao-geral">Geral</a>
-        <a href="#importar">Adicionar</a>
-        <a href="#biblioteca">Biblioteca</a>
-        <a href="#timeline-section">Timeline</a>
-        <a href="#playlist-final">Final</a>
+        <a class="active" href="?view=geral" data-view-link="geral">Geral</a>
+        <a href="?view=adicionar" data-view-link="adicionar">Adicionar</a>
+        <a href="?view=biblioteca" data-view-link="biblioteca">Biblioteca</a>
+        <a href="?view=timeline" data-view-link="timeline">Timeline</a>
+        <a href="?view=final" data-view-link="final">Final</a>
       </nav>
 
       <div class="account-actions">
@@ -82,7 +82,7 @@
     </section>
 
     <main class="site-main">
-      <section class="section overview-section" id="visao-geral" aria-labelledby="overview-title">
+      <section class="section view-section overview-section" id="visao-geral" data-view="geral" aria-labelledby="overview-title">
         <div class="section-heading compact">
           <div>
             <p class="eyebrow">studio</p>
@@ -128,7 +128,7 @@
         </div>
       </section>
 
-      <section class="section add-section" id="importar" aria-labelledby="add-title">
+      <section class="section view-section add-section" id="importar" data-view="adicionar" aria-labelledby="add-title">
         <div class="section-heading">
           <div>
             <p class="eyebrow">entrada</p>
@@ -228,7 +228,7 @@
         </form>
       </section>
 
-      <section class="section playlist-section" id="biblioteca" aria-labelledby="playlist-title">
+      <section class="section view-section playlist-section" id="biblioteca" data-view="biblioteca" aria-labelledby="playlist-title">
         <div class="section-heading">
           <div>
             <p class="eyebrow">biblioteca</p>
@@ -238,17 +238,24 @@
         <div class="playlist-grid" id="playlist-grid"></div>
       </section>
 
-      <section class="section timeline-section" id="timeline-section" aria-labelledby="timeline-title">
+      <section class="section view-section timeline-section" id="timeline-section" data-view="timeline" aria-labelledby="timeline-title">
         <div class="section-heading">
           <div>
             <p class="eyebrow">histórico</p>
             <h2 id="timeline-title">Linha do tempo</h2>
           </div>
+          <div class="timeline-toolbar">
+            <p class="timeline-summary" id="timeline-summary">Sem histórico ainda.</p>
+            <label class="timeline-filter" for="timeline-month">
+              <span>Mês</span>
+              <select id="timeline-month"></select>
+            </label>
+          </div>
         </div>
         <div class="timeline-list" id="timeline-list"></div>
       </section>
 
-      <section class="section final-section" id="playlist-final" aria-labelledby="final-title">
+      <section class="section view-section final-section" id="playlist-final" data-view="final" aria-labelledby="final-title">
         <div class="section-heading">
           <div>
             <p class="eyebrow">resultado</p>
@@ -292,7 +299,7 @@
             <h3 id="generated-title">Nossa playlist comentada</h3>
             <p id="generated-subtitle">0 músicas organizadas em uma playlist final.</p>
             <div class="generated-actions">
-              <a href="#final-playlist">Ver ordem</a>
+              <a href="?view=final#final-playlist" data-view-link="final">Ver ordem</a>
               <button type="button" id="copy-generated-button">Copiar playlist</button>
             </div>
           </div>

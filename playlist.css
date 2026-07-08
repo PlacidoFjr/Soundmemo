@@ -327,6 +327,10 @@ body.auth-locked .site-main {
   background: var(--panel);
 }
 
+.view-section[hidden] {
+  display: none !important;
+}
+
 .section-heading,
 .track-line,
 .track-footer {
@@ -714,6 +718,37 @@ select:focus {
   text-align: right;
 }
 
+.timeline-toolbar {
+  display: grid;
+  gap: 10px;
+  justify-items: end;
+}
+
+.timeline-summary {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+}
+
+.timeline-filter {
+  display: grid;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.timeline-filter select {
+  width: 100%;
+}
+
+.timeline-filter span {
+  color: var(--muted-strong);
+  font-size: 12px;
+  font-weight: 850;
+  text-align: right;
+}
+
 .playlist-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -873,12 +908,27 @@ select:focus {
   height: 38px;
   display: grid;
   place-items: center;
+  align-content: center;
   border: 5px solid var(--panel);
   border-radius: 50%;
   background: var(--green);
   color: #06140b;
+  line-height: 1;
+}
+
+.timeline-marker strong {
+  display: block;
   font-size: 13px;
   font-weight: 950;
+}
+
+.timeline-marker small {
+  display: block;
+  margin-top: 1px;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .timeline-card {
@@ -1109,6 +1159,15 @@ select:focus {
   .form-note {
     text-align: left;
   }
+
+  .timeline-toolbar {
+    justify-items: start;
+  }
+
+  .timeline-summary,
+  .timeline-filter span {
+    text-align: left;
+  }
 }
 
 @media (max-width: 640px) {
@@ -1228,6 +1287,7 @@ select:focus {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto auto;
     gap: 5px;
+    align-items: stretch;
   }
 
   .auth-button,
@@ -1238,8 +1298,23 @@ select:focus {
   }
 
   .user-chip {
-    max-width: none;
+    max-width: 100%;
     justify-content: flex-start;
+  }
+
+  .timeline-item {
+    grid-template-columns: 46px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .timeline-list::before {
+    left: 15px;
+  }
+
+  .timeline-marker {
+    width: 34px;
+    height: 34px;
+    border-width: 4px;
   }
 
   .feature-cover,
