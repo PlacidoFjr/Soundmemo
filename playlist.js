@@ -252,7 +252,7 @@ generatePlaylistButton.addEventListener("click", () => {
 
   hasGeneratedPlaylist = true;
   renderGeneratedPlaylist();
-  applyView("final", { updateHistory: true, hash: "#final-playlist" });
+  applyView("studio", { updateHistory: true, hash: "#playlist-final" });
   generatedPlaylist.scrollIntoView({ behavior: "smooth", block: "center" });
   setStatus("Playlist final gerada.");
 });
@@ -334,22 +334,26 @@ function resolveViewFromLocation() {
   const queryView = params.get("view");
   if (isKnownView(queryView)) return queryView;
 
-  const hash = window.location.hash;
-  if (hash === "#visao-geral") return "geral";
-  if (hash === "#importar") return "adicionar";
-  if (hash === "#biblioteca") return "biblioteca";
-  if (hash === "#timeline-section") return "timeline";
-  if (hash === "#playlist-final" || hash === "#final-playlist") return "final";
+  if (["geral", "adicionar", "biblioteca", "final"].includes(queryView)) {
+    return "studio";
+  }
 
-  return "geral";
+  const hash = window.location.hash;
+  if (hash === "#visao-geral") return "studio";
+  if (hash === "#importar") return "studio";
+  if (hash === "#biblioteca") return "studio";
+  if (hash === "#timeline-section") return "timeline";
+  if (hash === "#playlist-final" || hash === "#final-playlist") return "studio";
+
+  return "studio";
 }
 
 function isKnownView(value) {
-  return ["geral", "adicionar", "biblioteca", "timeline", "final"].includes(value);
+  return ["studio", "timeline"].includes(value);
 }
 
 function applyView(view, { updateHistory = false, replaceHistory = false, hash = "" } = {}) {
-  activeView = isKnownView(view) ? view : "geral";
+  activeView = isKnownView(view) ? view : "studio";
 
   viewSections.forEach((section) => {
     section.hidden = section.dataset.view !== activeView;

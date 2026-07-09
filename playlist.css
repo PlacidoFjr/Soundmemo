@@ -139,6 +139,11 @@ svg {
   background: rgba(255, 255, 255, 0.045);
 }
 
+.site-nav.compact-nav {
+  width: min(100%, 320px);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .site-nav a {
   min-width: 0;
   min-height: 40px;
@@ -1139,6 +1144,10 @@ select:focus {
     justify-self: stretch;
   }
 
+  .site-nav.compact-nav {
+    width: 100%;
+  }
+
   .overview-grid,
   .playlist-grid {
     grid-template-columns: 1fr;
@@ -1257,6 +1266,10 @@ select:focus {
     padding: 4px;
     overflow-x: auto;
     scrollbar-width: none;
+  }
+
+  .site-nav.compact-nav {
+    grid-template-columns: repeat(2, max-content);
   }
 
   .site-nav::-webkit-scrollbar {
