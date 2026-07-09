@@ -310,7 +310,8 @@ function getEmailAuthErrorMessage(error) {
 
 function getFirestoreErrorMessage(error) {
   if (error?.code === "permission-denied") {
-    return "Firestore recusou o salvamento. Confira se as regras foram publicadas e se este e-mail esta liberado.";
+    const email = currentUser?.email ? ` (${currentUser.email})` : "";
+    return `Firestore bloqueou este login${email}. Publique as regras liberando esse e-mail em Firestore > Regras.`;
   }
 
   if (error?.code === "unavailable") {
@@ -386,6 +387,7 @@ function stopTracksPolling() {
 }
 
 async function createTrack(track) {
+  await ensureFirestoreAuth();
   const userName = getUserLabel(currentUser);
   const createdAt = new Date().toISOString();
 
@@ -412,6 +414,7 @@ async function createTrack(track) {
 }
 
 async function loadTracks(expectedTrackId) {
+  await ensureFirestoreAuth();
   const snapshot = await getDocs(tracksCollection);
   const serverTracks = sortTracks(snapshot.docs.map((item) => normalizeFirebaseTrack(item)));
   tracks = serverTracks;
@@ -429,12 +432,22 @@ async function loadTracks(expectedTrackId) {
 }
 
 async function deleteTrack(id) {
+  await ensureFirestoreAuth();
   await deleteDoc(doc(db, "tracks", id));
 }
 
 async function clearTracks() {
+  await ensureFirestoreAuth();
   const snapshot = await getDocs(tracksCollection);
   await Promise.all(snapshot.docs.map((item) => deleteDoc(item.ref)));
+}
+
+async function ensureFirestoreAuth() {
+  if (!currentUser) {
+    throw new Error("Entre com sua conta antes de acessar o Firestore.");
+  }
+
+  await currentUser.getIdToken();
 }
 
 async function buildTrackFromUrl(rawUrl) {
