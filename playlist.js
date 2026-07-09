@@ -10,14 +10,9 @@ import {
   collection,
   deleteDoc,
   doc,
-  getDocFromServer,
   getDocs,
-  getDocsFromServer,
-  initializeFirestore,
-  onSnapshot,
-  serverTimestamp,
-  writeBatch,
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+  getFirestore,
+} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-lite.js";
 
 const firebaseConfig = window.SOUNDMEMO_FIREBASE_CONFIG;
 
@@ -36,10 +31,7 @@ const ALLOWED_EMAILS = [
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-  ignoreUndefinedProperties: true,
-});
+const db = getFirestore(app);
 const tracksCollection = collection(db, "tracks");
 
 const form = document.querySelector("#music-form");
@@ -91,7 +83,7 @@ const viewSections = document.querySelectorAll(".view-section");
 
 let tracks = [];
 let currentUser = null;
-let unsubscribeTracks = null;
+let tracksPollTimer = null;
 let hasGeneratedPlaylist = false;
 let activeView = resolveViewFromLocation();
 let selectedTimelineMonth = "all";
@@ -103,7 +95,7 @@ renderTracks();
 onAuthStateChanged(auth, (user) => {
   if (!user) {
     currentUser = null;
-    unsubscribeFromTracks();
+    stopTracksPolling();
     tracks = [];
     renderTracks();
     setLockedState("Use o e-mail e a senha cadastrados no Firebase.");
@@ -112,7 +104,7 @@ onAuthStateChanged(auth, (user) => {
 
   if (!isAllowedUser(user)) {
     currentUser = null;
-    unsubscribeFromTracks();
+    stopTracksPolling();
     tracks = [];
     renderTracks();
     setLockedState(`O e-mail ${user.email} ainda não tem acesso ao SoundMemo.`);
@@ -122,10 +114,7 @@ onAuthStateChanged(auth, (user) => {
 
   currentUser = user;
   setUnlockedState(user);
-  refreshTracksFromServer().catch((error) => {
-    setStatus(getFirestoreErrorMessage(error));
-  });
-  subscribeToTracks();
+  startTracksPolling();
 });
 
 viewLinks.forEach((link) => {
@@ -209,7 +198,7 @@ form.addEventListener("submit", async (event) => {
     contributorInput.value = getUserLabel(currentUser);
     previewBox.hidden = true;
     previewBox.innerHTML = "";
-    await refreshTracksFromServer(savedTrackId);
+    await loadTracks(savedTrackId);
     setStatus(`Música salva no Firestore. ID: ${savedTrackId}`);
   } catch (error) {
     setStatus(getFirestoreErrorMessage(error));
@@ -221,6 +210,7 @@ clearButton.addEventListener("click", async () => {
 
   try {
     await clearTracks();
+    await loadTracks();
     setStatus("Biblioteca limpa.");
   } catch (error) {
     setStatus(error.message);
@@ -233,6 +223,7 @@ grid.addEventListener("click", async (event) => {
 
   try {
     await deleteTrack(removeButton.dataset.removeId);
+    await loadTracks();
     setStatus("Música removida.");
   } catch (error) {
     setStatus(error.message);
@@ -375,38 +366,28 @@ function applyView(view, { updateHistory = false, replaceHistory = false, hash =
   }
 }
 
-function subscribeToTracks() {
-  unsubscribeFromTracks();
-
-  unsubscribeTracks = onSnapshot(
-    tracksCollection,
-    { includeMetadataChanges: true },
-    (snapshot) => {
-      tracks = sortTracks(snapshot.docs.map((item) => normalizeFirebaseTrack(item)));
-      renderTracks();
-      const syncMode = snapshot.metadata.hasPendingWrites
-        ? "realtime local pendente"
-        : snapshot.metadata.fromCache
-          ? "realtime em cache"
-          : "realtime sincronizado";
-      setDebugStatus(`Projeto ${firebaseConfig.projectId} - ${syncMode} com ${tracks.length} faixa(s).`);
-    },
-    (error) => {
-      setDebugStatus(`Projeto ${firebaseConfig.projectId} - erro no realtime: ${error.code || "desconhecido"}.`);
-      setStatus(getFirestoreErrorMessage(error));
-    }
-  );
+function startTracksPolling() {
+  stopTracksPolling();
+  loadTracks().catch((error) => {
+    setStatus(getFirestoreErrorMessage(error));
+  });
+  tracksPollTimer = window.setInterval(() => {
+    loadTracks().catch((error) => {
+      setDebugStatus(`Projeto ${firebaseConfig.projectId} - erro ao atualizar: ${error.code || "desconhecido"}.`);
+    });
+  }, 15000);
 }
 
-function unsubscribeFromTracks() {
-  if (unsubscribeTracks) {
-    unsubscribeTracks();
-    unsubscribeTracks = null;
+function stopTracksPolling() {
+  if (tracksPollTimer) {
+    window.clearInterval(tracksPollTimer);
+    tracksPollTimer = null;
   }
 }
 
 async function createTrack(track) {
   const userName = getUserLabel(currentUser);
+  const createdAt = new Date().toISOString();
 
   const savedDoc = await addDoc(tracksCollection, {
     platform: track.platform,
@@ -423,25 +404,20 @@ async function createTrack(track) {
     userId: currentUser.uid,
     userName,
     userEmail: currentUser.email,
-    createdAt: serverTimestamp(),
-    createdAtClient: new Date().toISOString(),
+    createdAt,
+    createdAtClient: createdAt,
   });
-
-  const confirmedDoc = await getDocFromServer(savedDoc);
-  if (!confirmedDoc.exists()) {
-    throw new Error("A musica foi enviada, mas nao apareceu no Firestore.");
-  }
 
   return savedDoc.id;
 }
 
-async function refreshTracksFromServer(expectedTrackId) {
-  const snapshot = await getDocsFromServer(tracksCollection);
+async function loadTracks(expectedTrackId) {
+  const snapshot = await getDocs(tracksCollection);
   const serverTracks = sortTracks(snapshot.docs.map((item) => normalizeFirebaseTrack(item)));
   tracks = serverTracks;
   renderTracks();
 
-  setDebugStatus(`Projeto ${firebaseConfig.projectId} - servidor devolveu ${serverTracks.length} faixa(s).`);
+  setDebugStatus(`Projeto ${firebaseConfig.projectId} - ${serverTracks.length} faixa(s) no Firestore.`);
 
   if (expectedTrackId && !serverTracks.some((track) => track.id === expectedTrackId)) {
     throw new Error(
@@ -458,13 +434,7 @@ async function deleteTrack(id) {
 
 async function clearTracks() {
   const snapshot = await getDocs(tracksCollection);
-  const batch = writeBatch(db);
-
-  snapshot.forEach((item) => {
-    batch.delete(item.ref);
-  });
-
-  await batch.commit();
+  await Promise.all(snapshot.docs.map((item) => deleteDoc(item.ref)));
 }
 
 async function buildTrackFromUrl(rawUrl) {
@@ -520,8 +490,9 @@ async function buildSpotifyTrack(url) {
     if (response.ok) {
       const data = await response.json();
       const parts = splitSpotifyTitle(data.title);
+      const resolvedArtist = String(data.author_name || parts.artist || artist).trim();
       title = parts.title || title;
-      artist = parts.artist || artist;
+      artist = resolvedArtist || artist;
       coverUrl = data.thumbnail_url || "";
     }
   } catch {

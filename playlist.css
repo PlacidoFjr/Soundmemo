@@ -140,8 +140,15 @@ svg {
 }
 
 .site-nav.compact-nav {
-  width: min(100%, 320px);
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  width: fit-content;
+  min-width: 0;
+  max-width: none;
+  grid-template-columns: repeat(2, minmax(128px, max-content));
+}
+
+.site-nav.compact-nav a {
+  min-width: 128px;
+  padding: 0 18px;
 }
 
 .site-nav a {

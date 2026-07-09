@@ -138,11 +138,12 @@ async function importSpotify(url) {
   if (!data) return fallback;
 
   const titleParts = splitSpotifyTitle(data.title);
+  const resolvedArtist = String(data.author_name || titleParts.artist || fallback.artist).trim();
 
   return {
     ...fallback,
     title: titleParts.title || fallback.title,
-    artist: titleParts.artist || fallback.artist,
+    artist: resolvedArtist || fallback.artist,
     coverUrl: data.thumbnail_url || "",
     embedHtml: data.html || fallback.embedHtml,
   };
